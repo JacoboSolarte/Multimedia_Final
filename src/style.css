@@ -1,0 +1,13 @@
+/* (Yuly) Estilos del juego. Base mínima del esqueleto. */
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #eee;
+  font-family: system-ui, sans-serif;
+}
+
+canvas {
+  display: block;
+}
