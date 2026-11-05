@@ -1,6 +1,21 @@
-// (Yuly) Textos del bestiario. Pendiente.
+// Adaptaciones originales para el juego; la panela es una mecánica inventada.
 export const LEYENDAS = {
-  duende: '',
-  bruja: '',
-  silbon: '',
+  duende: {
+    nombre: 'El Duende',
+    texto: 'Dicen en la vereda que los objetos no se caen solos. Un pequeño de sombrero grande ronda la casa, tumba ollas y esconde lo que dejas en el suelo. Casi nunca lo ves, pero la linterna puede revelar su figura. No lo alumbres demasiado: la curiosidad lo enfurece. Sigue las risitas si algo desaparece. En este juego, un dulce de panela lo distrae veinte segundos. Esta contra es una invención del equipo, no una afirmación sobre la tradición. Encuentra la llave del portón y sal antes de que cante el gallo.',
+    contra: 'Deja panela en el piso con E. No lo alumbres más de dos segundos.',
+    tema: 'Física, objetos y ruido',
+  },
+  bruja: {
+    nombre: 'La Bruja',
+    texto: 'Mijo, si ves una sombra cruzar la ventana, no te asomes. En los relatos de la vereda, la bruja vuela alrededor de la casa y se acerca a la luz. Aquí la linterna encendida, junto a una ventana abierta, le muestra por dónde entrar. La sal y las tijeras abiertas en cruz son protecciones que aparecen en las creencias populares. Acércate a una ventana con una de ellas y pulsa E para sellarla. Si ya entró, camina con cuidado y busca dónde esconderte. La llave del portón es tu camino al amanecer.',
+    contra: 'Sella ventanas con sal o tijeras en mano y E. Apaga la linterna cerca de ventanas sin sellar.',
+    tema: 'Luz, ventanas y sombras',
+  },
+  silbon: {
+    nombre: 'El Silbón',
+    texto: 'Escucha bien, mijo: con el Silbón el oído engaña. Cuentan que si su silbido se oye fuerte, está lejos; cuando apenas se escucha, puede estar detrás de ti. Es un relato de los llanos que también se cuenta a este lado de la frontera. En esta finca, fíjate en los pasos y el costal de huesos: esos sí anuncian la cercanía. El ají lanzado lo aturde; una radio con ladridos lo mantiene apartado por un momento. Si llevas un látigo, puedes librarte de una captura. No te confíes: busca la llave y escapa.',
+    contra: 'Lanza ají con clic. Deja la radio con E. El látigo en el inventario evita una captura.',
+    tema: 'Audio espacial invertido',
+  },
 };
