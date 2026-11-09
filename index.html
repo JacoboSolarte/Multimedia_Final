@@ -3,11 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1510" />
     <link rel="icon" href="data:," />
     <title>Espantos: La Noche en la Vereda</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <main id="juego" aria-label="Escena de Espantos"></main>
+    <div id="ui">
+      <section id="pantalla" class="pantalla" aria-labelledby="titulo">
+        <div class="panel">
+          <header><p class="etiqueta">Una historia para jugar con el oído</p><h1 id="titulo">Espantos<span>La noche en la vereda</span></h1><p id="subtitulo">Un relato colombiano</p></header>
+          <div id="carga"><p id="mensaje" role="status">Preparando la finca…</p><progress id="progreso" max="1" value="0" aria-label="Carga de recursos"></progress></div>
+          <div id="contenido"></div>
+          <footer>JACOBO / JERÓNIMO / YULY <span>ENTORNOS MULTIMEDIA · 2026</span></footer>
+        </div>
+      </section>
+      <aside id="video-contenedor" hidden><video id="relato-video" controls playsinline preload="metadata"></video><p id="video-aviso" role="status"></p></aside>
+      <section id="hud" class="hud" aria-label="Estado del juego" hidden>
+        <p id="estado"></p><p id="bateria"></p>
+        <label class="medidor">Ruido <meter id="ruido" min="0" max="8" value="0" aria-label="Ruido del jugador"></meter></label>
+        <div id="inventario" aria-label="Inventario"></div>
+        <p id="aviso" role="status" hidden></p>
+        <p class="ayuda">WASD mover · E interactuar · F linterna · Q soltar · clic lanzar · 1–4 inventario · Esc pausa</p>
+        <span class="mira" aria-hidden="true">·</span>
+      </section>
+      <p id="laboratorio" hidden>LABORATORIO · T captura · U llave · Y salida · I ruido</p>
+      <div id="susto" hidden aria-label="Te atrapó un espanto"><span>NO MIRES ATRÁS</span></div>
+    </div>
+    <noscript>Activa JavaScript para jugar Espantos.</noscript>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
