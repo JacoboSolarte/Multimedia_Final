@@ -36,12 +36,19 @@ export class Duende extends Espanto {
     const destino = new THREE.Vector3(this.body.position.x, this.body.position.y, this.body.position.z);
     const hacia = destino.sub(origen);
     if (hacia.length() >= 8) return false;
-    luz.getWorldDirection(_dir);
+    // Hacia el target de la SpotLight: getWorldDirection() da el +Z local, que en la cámara apunta HACIA ATRÁS.
+    luz.target.getWorldPosition(_dir).sub(origen).normalize();
     return _dir.dot(hacia.normalize()) >= Math.cos(luz.angle ?? 0.42);
   }
 
   // El Duende solo adquiere al jugador cuando la linterna lo revela.
   _veJugador() { return false; }
+  _puedeSentir() { return false; }
+
+  _alPerseguir() {
+    const risa = this.risas?.[0];
+    if (risa && this.ctx.audio.listener.context.state === 'running') { if (risa.isPlaying) risa.stop(); risa.play(); }
+  }
 
   _actualizarUnico(dt) {
     const iluminado = this._estaEnLinterna();
@@ -103,8 +110,12 @@ export class Duende extends Espanto {
   }
 
   _puntoLejano() {
+    // Lejos del jugador, en la dirección contraria (antes era al azar y a veces corría hacia él)
     const p = this.ctx.player.posicion;
-    return p.clone().add(new THREE.Vector3((Math.random() - 0.5) * 14, 0, (Math.random() - 0.5) * 14));
+    const huir = new THREE.Vector3(this.body.position.x - p.x, 0, this.body.position.z - p.z);
+    if (huir.lengthSq() < 0.01) huir.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+    huir.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), (Math.random() - 0.5) * 1.2);
+    return p.clone().addScaledVector(huir, 8 + Math.random() * 4);
   }
 
   _empujarObjeto() {

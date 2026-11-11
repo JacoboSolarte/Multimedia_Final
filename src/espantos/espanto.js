@@ -46,6 +46,8 @@ export class Espanto {
     const material = this.ctx.physics.materiales.espanto;
     this.body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, shape: new CANNON.Sphere(0.38), material, fixedRotation: true, allowSleep: false });
     this.body.position.set(p.x, p.y + 0.38, p.z);
+    // Los espantos atrapan por distancia: su cuerpo no debe empujar al jugador (el Duende invisible lo frenaba).
+    this.body.collisionResponse = false;
     this.ctx.physics.agregar(this.body);
     this._posAnterior.set(p.x, p.y + 0.38, p.z);
   }
@@ -121,10 +123,18 @@ export class Espanto {
     this.estado = estado;
     this._estadoInicializado = true;
     this._tiempoEstado = 0;
-    if (objetivo) this.objetivo = objetivo.clone?.() ?? objetivo;
+    // Recalcular la ruta: antes guardaba el objetivo nuevo pero seguía la ruta vieja de patrulla.
+    if (objetivo) this._irA(objetivo.clone?.() ?? objetivo);
     if (estado === 'PATRULLA' && !this.objetivo) this._elegirPatrulla();
+    if (estado === 'PERSECUCION') this._alPerseguir();
     this.ctx.bus.emit('espanto:estado', { tipo: this.tipo, estado });
   }
+
+  // Aviso sonoro al empezar a perseguir (cada espanto pone el suyo)
+  _alPerseguir() {}
+
+  // ¿Puede notar al jugador muy cerca aunque no lo esté mirando? (la Bruja solo dentro de la casa)
+  _puedeSentir() { return true; }
 
   _elegirPatrulla() {
     const wp = this.grafo.waypointAleatorio();
@@ -168,14 +178,16 @@ export class Espanto {
 
   _mover(dt) {
     let destino = this.objetivo;
-    while (this.rutaActual.length && this.rutaActual[0].distanceTo(new THREE.Vector3(this.body.position.x, this.body.position.y, this.body.position.z)) < 0.55) this.rutaActual.shift();
+    // Distancia en el plano: el cuerpo flota 0.38 m sobre el waypoint y en 3D nunca "llegaba", se quedaba congelado.
+    const pos = this.body.position;
+    while (this.rutaActual.length && Math.hypot(this.rutaActual[0].x - pos.x, this.rutaActual[0].z - pos.z) < 0.55) this.rutaActual.shift();
     if (this.rutaActual.length) destino = this.rutaActual[0];
     if (!destino) { this.body.velocity.set(0, 0, 0); return; }
     const dx = destino.x - this.body.position.x;
     const dz = destino.z - this.body.position.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.45) {
-      const diferenciaY = destino.y - this.body.position.y;
+      const diferenciaY = destino.y + 0.38 - this.body.position.y; // el cuerpo va 0.38 m sobre el punto (radio de la esfera)
       if (this.tipo === 'bruja' && Math.abs(diferenciaY) > 0.25) {
         this.body.velocity.set(0, clamp(diferenciaY * 2.5, -3, 3), 0);
         return;
@@ -188,7 +200,7 @@ export class Espanto {
     const persecucion = this.estado === 'PERSECUCION' || this.estado === 'HUIDA';
     const base = persecucion ? this.config.velPersecucion : this.config.velPatrulla;
     const v = base * (this.velocidad.multVelocidad ?? 1) * (this.estado === 'ATURDIDO' ? 0 : 1);
-    const vy = this.tipo === 'bruja' ? clamp((destino.y - this.body.position.y) * 2.5, -3, 3) : 0;
+    const vy = this.tipo === 'bruja' ? clamp((destino.y + 0.38 - this.body.position.y) * 2.5, -3, 3) : 0;
     this.body.velocity.set((dx / d) * v, vy, (dz / d) * v);
     this._direccion.set(dx / d, 0, dz / d).normalize();
     this.modelo.rotation.y = Math.atan2(this._direccion.x, this._direccion.z);
@@ -229,7 +241,10 @@ export class Espanto {
     if (this.estado === 'CAPTURA') { this.body.velocity.set(0, 0, 0); this._actualizarAnimacion(dt); return; }
     this._tiempoVision -= dt;
     if (this._tiempoVision <= 0) { this._tiempoVision = 0.1; this._veEnCache = this._veJugador(); }
-    const ve = this._veEnCache && !this.ctx.player.isHidden;
+    // A 2 m o menos te nota aunque esté de espaldas: antes pasaba a tu lado sin hacer nada.
+    const jugador = this.ctx.player;
+    const cerca = this._puedeSentir() && this.body.position.distanceTo(jugador.posicion) < this.config.radioCaptura + 0.8;
+    const ve = (this._veEnCache || cerca) && !jugador.isHidden;
     const sigueAlEscondite = this.ctx.player.isHidden && this._vioEsconderse;
     if (ve) {
       this._sinVision = 0;
@@ -271,7 +286,6 @@ export class Espanto {
   setActivo(valor) {
     this.activo = Boolean(valor);
     this.modelo.visible = this.activo && this.tipo !== 'duende';
-    this.body.collisionResponse = this.activo;
     if (!this.activo) this.body.velocity.set(0, 0, 0);
     else {
       this._ultimaCaptura = false;
@@ -309,7 +323,8 @@ export class Espanto {
     if (this.body) this.ctx.physics.quitar(this.body);
     if (this.modelo) {
       this.ctx.engine.scene.remove(this.modelo);
-      this.modelo.traverse((o) => { o.geometry?.dispose(); if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose()); else o.material?.dispose(); });
+      // El modelo real comparte geometría y materiales con el GLB en caché: liberarlos obliga a recompilar (tirón).
+      if (this.modelo.userData.temporal) this.modelo.traverse((o) => { o.geometry?.dispose(); if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose()); else o.material?.dispose(); });
     }
     this.activo = false;
   }
