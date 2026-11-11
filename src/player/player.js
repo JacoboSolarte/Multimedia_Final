@@ -109,6 +109,9 @@ export class Player {
     v.x += (deseo.x - v.x) * k;
     v.z += (deseo.z - v.z) * k;
     if (quieto && this.enSuelo) v.x = v.z = 0; // no resbalar en las rampas
+    // Subir el escalón si el jugador camina contra él (la normal apunta en contra del movimiento)
+    const e = this._escalon;
+    if (moviendo && e && e.x * deseo.x + e.z * deseo.z < 0 && v.y < 1.8) v.y = 1.8;
 
     this.posicion.set(this.body.position.x, this.body.position.y - RADIO, this.body.position.z);
 
@@ -132,15 +135,17 @@ export class Player {
   _detectarSuelo() {
     const antes = this.enSuelo;
     this.enSuelo = false;
+    this._escalon = null;
     for (const c of this.ctx.physics.world.contacts) {
-      let ny;
-      if (c.bi === this.body) ny = -c.ni.y;
-      else if (c.bj === this.body) ny = c.ni.y;
+      let signo;
+      if (c.bi === this.body) signo = -1;
+      else if (c.bj === this.body) signo = 1;
       else continue;
-      if (ny > 0.5) {
-        this.enSuelo = true;
-        break;
-      }
+      const ny = c.ni.y * signo;
+      if (ny > 0.5) this.enSuelo = true;
+      // Borde bajo (5 a 30 cm: costado de una rampa, umbral, losa): la normal sale inclinada.
+      // Cannon lo trata como pared y devuelve al jugador; se guarda para subirlo en update().
+      else if (ny > 0.15) this._escalon = { x: c.ni.x * signo, z: c.ni.z * signo };
     }
     // al caer de un salto suena (ruido 3)
     if (!antes && this.enSuelo && this._velCaida < -3) {

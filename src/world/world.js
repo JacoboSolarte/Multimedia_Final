@@ -93,6 +93,7 @@ export class World {
 
     // Sistemas
     this.puertas = new Puertas(ctx, lista('DOOR_'));
+    this.waypoints.push(...this._waypointsDePuertas());
     this.portales = new Portales(ctx, lista('PORTAL_'));
     this.zonas = new Zonas(ctx, lista('ZONE_'));
     this.objetos = new ObjetosMundo(ctx, this.spawns.items);
@@ -120,6 +121,30 @@ export class World {
       this.portales.update(dt, player, tiempo);
       this.zonas.update(player.posicion);
     }
+  }
+
+  // Los WP_ del .glb quedan en el centro de cada cuarto y los muros cortan la visibilidad entre ellos,
+  // así que el grafo salía en islas. Un par de puntos a cada lado del vano de cada puerta las une.
+  _waypointsDePuertas() {
+    const puntos = [];
+    const abajo = new THREE.Vector3(0, -1, 0);
+    const rayo = new THREE.Raycaster();
+    for (const p of this.puertas.lista) {
+      const bisagra = p.mesh.getWorldPosition(new THREE.Vector3());
+      const centro = p.centroLocal.clone();
+      p.mesh.localToWorld(centro);
+      const base = new THREE.Box3().setFromObject(p.mesh).min.y;
+      const normal = new THREE.Vector3(centro.z - bisagra.z, 0, bisagra.x - centro.x).normalize();
+      for (const [lado, signo] of [['a', 1], ['b', -1]]) {
+        const punto = centro.clone().addScaledVector(normal, 0.9 * signo);
+        rayo.set(new THREE.Vector3(punto.x, base + 1, punto.z), abajo);
+        rayo.far = 2.5;
+        const piso = rayo.intersectObjects(this.obstaculos, false)[0];
+        punto.y = piso ? piso.point.y : base;
+        puntos.push({ id: `WP_puerta_${p.id}_${lado}`, posicion: punto, vecinos: [] });
+      }
+    }
+    return puntos;
   }
 
   // ---------------------------------------------------------------- contrato 9.5
