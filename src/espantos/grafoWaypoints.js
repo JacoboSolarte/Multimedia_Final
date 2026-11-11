@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
-const DISTANCIA_MAXIMA = 7;
+// 14 m: el ático es abierto y sus WP_ están separados; el raycast sigue cortando a través de muros.
+const DISTANCIA_MAXIMA = 14;
 
 // Grafo de visibilidad entre los puntos de patrulla de la finca.
 export class GrafoWaypoints {
@@ -15,16 +16,15 @@ export class GrafoWaypoints {
 
   _conectar() {
     const porPosicion = this.waypoints.map((w) => w.posicion ?? w);
+    // Vaciar todas las listas antes de conectar: vaciarlas dentro del bucle borraba las aristas ya agregadas.
+    for (const w of this.waypoints) { w.vecinos ??= []; w.vecinos.length = 0; }
     for (let i = 0; i < this.waypoints.length; i++) {
       const actual = this.waypoints[i];
-      actual.vecinos ??= [];
-      actual.vecinos.length = 0;
       for (let j = i + 1; j < this.waypoints.length; j++) {
         const distancia = porPosicion[i].distanceTo(porPosicion[j]);
         if (distancia >= DISTANCIA_MAXIMA || this._bloqueado(porPosicion[i], porPosicion[j])) continue;
         const otro = this.waypoints[j];
         actual.vecinos.push(otro.id ?? otro);
-        otro.vecinos ??= [];
         otro.vecinos.push(actual.id ?? actual);
       }
     }
@@ -34,7 +34,7 @@ export class GrafoWaypoints {
     const delta = new THREE.Vector3().subVectors(b, a);
     const distancia = delta.length();
     if (!distancia || !this.obstaculos.length) return false;
-    this.raycaster.set(a.clone().add(new THREE.Vector3(0, 0.2, 0)), delta.normalize());
+    this.raycaster.set(a.clone().add(new THREE.Vector3(0, 0.5, 0)), delta.normalize());
     this.raycaster.far = Math.max(0, distancia - 0.08);
     return this.raycaster.intersectObjects(this.obstaculos, false).length > 0;
   }

@@ -42,7 +42,9 @@ export class Bruja extends Espanto {
       if (this._ruta.length) {
         const punto = this._ruta[this._indiceRuta % this._ruta.length];
         const destino = punto.clone(); destino.y += 2.1;
-        this._irA(destino);
+        // Vuela directo por fuera: el grafo de waypoints es del piso de la casa y la hacía aterrizar.
+        this.rutaActual = [];
+        this.objetivo = destino;
         if (this.body.position.distanceTo(destino) < 0.8) this._indiceRuta = (this._indiceRuta + 1) % this._ruta.length;
       }
       this._buscarVentana();
@@ -50,16 +52,19 @@ export class Bruja extends Espanto {
       const v = this._ventanaAtraida;
       if (v.sellada) { this._volverAFuera(); return; }
       const destino = v.posicion.clone(); destino.y += 1.5;
-      this._irA(destino);
+      this.rutaActual = [];
+      this.objetivo = destino;
       if (this.body.position.distanceTo(destino) < 1) {
         this._ventanaEntrada = v;
-        const wp = this.grafo.waypointAleatorio();
+        // Entra por ESA ventana (antes aparecía en un punto al azar, a veces en el ático) y va hacia la luz.
+        const wp = this._waypointInteriorCerca(v.posicion);
         if (wp) {
-          const destinoInterior = wp.posicion.clone(); destinoInterior.y += 1.5;
+          const destinoInterior = wp.posicion.clone(); destinoInterior.y += 1.2;
           this.body.position.set(destinoInterior.x, destinoInterior.y, destinoInterior.z);
           this.body.velocity.setZero();
           this._posAnterior.set(destinoInterior.x, destinoInterior.y, destinoInterior.z);
-          this._cambiarEstado('DENTRO', wp.posicion);
+          this.ultimaPosicion.copy(this.ctx.player.posicion);
+          this._cambiarEstado('DENTRO', this.ultimaPosicion);
           this._tiempoDentro = 40;
           this._reproducirUnaVez('bruja_carcajada');
         } else this._volverAFuera();
@@ -76,6 +81,23 @@ export class Bruja extends Espanto {
         this._cambiarEstado('VOLANDO');
       }
     }
+  }
+
+  _waypointInteriorCerca(posicion) {
+    const fuera = ['patio', 'exterior', 'corredor'];
+    const interiores = this.grafo.waypoints.filter((w) => !fuera.includes(this.ctx.world.zonaDe(w.posicion.clone().setY(w.posicion.y + 0.3))));
+    return interiores.sort((a, b) => a.posicion.distanceToSquared(posicion) - b.posicion.distanceToSquared(posicion))[0] ?? null;
+  }
+
+  _puedeSentir() { return Boolean(this._ventanaEntrada); }
+
+  // Desde afuera no oye pasos: sin esto un ruido la hacía atravesar los muros caminando
+  oirRuido(datos) { if (this._ventanaEntrada) super.oirRuido(datos); }
+
+  _alPerseguir() {
+    if (this.ctx.engine.tiempoTotal - (this._ultimaCarcajada ?? -99) < 6) return;
+    this._ultimaCarcajada = this.ctx.engine.tiempoTotal;
+    this._reproducirUnaVez('bruja_carcajada');
   }
 
   async _reproducirUnaVez(nombre) {
