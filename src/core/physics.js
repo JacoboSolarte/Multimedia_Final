@@ -52,9 +52,14 @@ export class Physics {
   step(dt) {
     // paso fijo de 1/60 con subpasos: estable aunque los FPS varíen
     this.world.step(1 / 60, dt, 3);
+    // Posición interpolada entre los dos últimos pasos: sin ella, en los frames sin paso el objeto
+    // se queda quieto y en el siguiente avanza el doble (tirones, sobre todo en pantallas de 75-144 Hz).
+    // Un body dormido no actualiza previousPosition: si el Duende o el reinicio lo movieron,
+    // la interpolación lo dejaría a medio camino. Dormido = quieto, así que se usa su posición real.
     for (const [body, mesh] of this._sincronizados) {
-      mesh.position.copy(body.position);
-      mesh.quaternion.copy(body.quaternion);
+      const dormido = body.sleepState === CANNON.Body.SLEEPING;
+      mesh.position.copy(dormido ? body.position : body.interpolatedPosition);
+      mesh.quaternion.copy(dormido ? body.quaternion : body.interpolatedQuaternion);
     }
   }
 }

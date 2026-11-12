@@ -20,6 +20,10 @@ const SONIDOS = {
 };
 const ZONAS_TIERRA = ['patio', 'exterior'];
 const ARRIBA = new THREE.Vector3(0, 1, 0);
+// vectores reutilizados en update(): crear 3 por frame alimenta al recolector de basura (micro-tirones)
+const _adelante = new THREE.Vector3();
+const _derecha = new THREE.Vector3();
+const _deseo = new THREE.Vector3();
 
 // Jugador en primera persona (contrato 9.6)
 export class Player {
@@ -52,6 +56,7 @@ export class Player {
     this.agachado = false;
     this.movimiento = 'quieto'; // quieto | caminar | correr | agachado
     this._ojos = OJOS.de_pie;
+    this._balanceo = 0;
     this._tRuido = 0;
     this._tPaso = 0;
     this._fase = 0;
@@ -90,9 +95,9 @@ export class Player {
     this.agachado = !quieto && teclas.agachado;
 
     // dirección de movimiento relativa a hacia dónde mira la cámara
-    const adelante = this.direccion.clone().setY(0).normalize();
-    const derecha = adelante.clone().cross(ARRIBA);
-    const deseo = new THREE.Vector3();
+    const adelante = _adelante.copy(this.direccion).setY(0).normalize();
+    const derecha = _derecha.copy(adelante).cross(ARRIBA);
+    const deseo = _deseo.set(0, 0, 0);
     if (!quieto) {
       if (teclas.adelante) deseo.add(adelante);
       if (teclas.atras) deseo.sub(adelante);
@@ -115,20 +120,27 @@ export class Player {
 
     this.posicion.set(this.body.position.x, this.body.position.y - RADIO, this.body.position.z);
 
-    // cámara: altura de ojos (más baja agachado) + balanceo al caminar
+    // altura de ojos (más baja agachado) + balanceo al caminar; la cámara se coloca en actualizarCamara()
     this._ojos += ((this.agachado ? OJOS.agachado : OJOS.de_pie) - this._ojos) * suavizado(10, dt);
-    if (this.isHidden) {
-      cam.position.copy(this.escondite.puntoCamara);
-    } else {
-      const vel = Math.hypot(v.x, v.z);
-      if (this.enSuelo && moviendo) this._fase += dt * vel * 2.4;
-      const balanceo = this.enSuelo && moviendo ? Math.sin(this._fase) * 0.035 * Math.min(1, vel / 3) : 0;
-      cam.position.set(this.body.position.x, this.body.position.y - RADIO + this._ojos + balanceo, this.body.position.z);
-    }
+    const vel = Math.hypot(v.x, v.z);
+    if (this.enSuelo && moviendo) this._fase += dt * vel * 2.4;
+    this._balanceo = this.enSuelo && moviendo ? Math.sin(this._fase) * 0.035 * Math.min(1, vel / 3) : 0;
 
     this._ruidoYPasos(dt, moviendo);
     this.linterna.update(dt, t);
     this._revisarSalida();
+  }
+
+  // Corre DESPUÉS de la física (prioridad 25): usa la posición interpolada del body para que la
+  // cámara avance lo mismo en cada frame aunque la física dé 0, 1 o 2 pasos en ese frame.
+  actualizarCamara() {
+    const cam = this.ctx.engine.camera;
+    if (this.isHidden) {
+      cam.position.copy(this.escondite.puntoCamara);
+      return;
+    }
+    const p = this.body.interpolatedPosition;
+    cam.position.set(p.x, p.y - RADIO + this._ojos + this._balanceo, p.z);
   }
 
   // Suelo por normal de contacto (semana 6): algún contacto con normal hacia arriba
@@ -283,6 +295,9 @@ export class Player {
   // Lo usan los portales y el respawn. destino = punto en el piso.
   teletransportar(destino) {
     this.body.position.set(destino.x, destino.y + RADIO + 0.05, destino.z);
+    // sin esto la interpolación dibuja un frame "deslizándose" desde el punto anterior
+    this.body.previousPosition.copy(this.body.position);
+    this.body.interpolatedPosition.copy(this.body.position);
     this.body.velocity.setZero();
     this.posicion.set(destino.x, destino.y + 0.05, destino.z);
   }

@@ -61,6 +61,8 @@ export class Bruja extends Espanto {
         if (wp) {
           const destinoInterior = wp.posicion.clone(); destinoInterior.y += 1.2;
           this.body.position.set(destinoInterior.x, destinoInterior.y, destinoInterior.z);
+          this.body.previousPosition.copy(this.body.position); // sin deslizarse desde afuera al interpolar
+          this.body.interpolatedPosition.copy(this.body.position);
           this.body.velocity.setZero();
           this._posAnterior.set(destinoInterior.x, destinoInterior.y, destinoInterior.z);
           this.ultimaPosicion.copy(this.ctx.player.posicion);
