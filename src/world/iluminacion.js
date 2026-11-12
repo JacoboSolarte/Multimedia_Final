@@ -21,6 +21,8 @@ export class Iluminacion {
     this.luna.shadow.bias = -0.0006;
     this.luna.shadow.normalBias = 0.03;
     scene.add(this.luna, this.luna.target);
+    // la luna y su cámara de sombra no se mueven: su sombra no hace falta recalcularla en cada frame
+    ctx.engine.registrarSombraLenta(this.luna);
 
     // Velas: PointLight cálida SIN sombra (una con sombra serían 6 renders por frame)
     const geoCera = new THREE.CylinderGeometry(0.025, 0.028, 0.12, 8);

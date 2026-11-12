@@ -77,9 +77,12 @@ async function arrancar() {
         ctx.espantos.destruir();
         ctx.espantos = new EspantoManager(ctx);
         ctx.espantos.iniciar(tipos, { multVelocidad: modo.multVelocidad, multEscucha: modo.multEscucha });
+        // shaders de los espantos e items de esta noche listos antes de verlos (evita congelones al aparecer)
+        motor.precompilar(ctx.espantos.lista.map((e) => e.modelo).filter(Boolean));
       };
       motor.onUpdate((dt) => ctx.player.update(dt), 10);
       motor.onUpdate((dt) => ctx.physics.step(dt), 20);
+      motor.onUpdate(() => ctx.player.actualizarCamara(), 25);
     }
     ctx.capturarPuntero = () => ctx.player.controles?.bloquearPuntero();
     ctx.liberarPuntero = () => ctx.player.controles?.liberarPuntero();
@@ -125,6 +128,7 @@ async function arrancar() {
     ctx.aplicarOpciones();
     document.getElementById('carga').hidden = true;
     ctx.game.menu();
+    motor.precompilar();
     motor.start();
   } finally { quitarProgreso(); }
 }

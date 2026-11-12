@@ -46,6 +46,8 @@ export class Espanto {
     const material = this.ctx.physics.materiales.espanto;
     this.body = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, shape: new CANNON.Sphere(0.38), material, fixedRotation: true, allowSleep: false });
     this.body.position.set(p.x, p.y + 0.38, p.z);
+    this.body.previousPosition.copy(this.body.position);
+    this.body.interpolatedPosition.copy(this.body.position);
     // Los espantos atrapan por distancia: su cuerpo no debe empujar al jugador (el Duende invisible lo frenaba).
     this.body.collisionResponse = false;
     this.ctx.physics.agregar(this.body);
@@ -227,7 +229,7 @@ export class Espanto {
     if (!this.mixer && this.modelo?.userData.temporal) {
       this._tiempoFlotar += dt;
       const altura = this.tipo === 'bruja' ? 1.45 : 0;
-      this.modelo.position.y = this.body.position.y - 0.38 + altura + Math.sin(this._tiempoFlotar * 2) * (this.tipo === 'bruja' ? 0.12 : 0.025);
+      this.modelo.position.y = this.body.interpolatedPosition.y - 0.38 + altura + Math.sin(this._tiempoFlotar * 2) * (this.tipo === 'bruja' ? 0.12 : 0.025);
       this.modelo.rotation.z = Math.sin(this._tiempoFlotar * 1.8) * 0.025;
     }
   }
@@ -235,9 +237,11 @@ export class Espanto {
   update(dt) {
     if (!this.activo) return;
     this._tiempoEstado += dt;
-    this.modelo.position.x = this.body.position.x;
-    this.modelo.position.z = this.body.position.z;
-    this.modelo.position.y = this.body.position.y - 0.38;
+    // posición interpolada de la física: el modelo avanza parejo en cada frame (sin tirones)
+    const pi = this.body.interpolatedPosition;
+    this.modelo.position.x = pi.x;
+    this.modelo.position.z = pi.z;
+    this.modelo.position.y = pi.y - 0.38;
     if (this.estado === 'CAPTURA') { this.body.velocity.set(0, 0, 0); this._actualizarAnimacion(dt); return; }
     this._tiempoVision -= dt;
     if (this._tiempoVision <= 0) { this._tiempoVision = 0.1; this._veEnCache = this._veJugador(); }
